@@ -1,0 +1,11 @@
+{
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "devDependencies": {
+    "@ruby/3.3-wasm-wasi": "^2.6.2",
+    "@ruby/wasm-wasi": "^2.6.2",
+    "browser-sync": "^2.29.3"
+  }
+}

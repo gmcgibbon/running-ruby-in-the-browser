@@ -1,0 +1,932 @@
+ <!DOCTYPE html>
+<html>
+  <head>
+    <title>Running Ruby in the Browser</title>
+    <meta charset="utf-8">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@4.5.0/dist/reset.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@4.5.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@4.5.0/dist/theme/dracula.css">
+    <link rel="stylesheet" href="https://unpkg.com/highlight.js@11.8.0/styles/github-dark.css">
+    <link rel="stylesheet" href="https://unpkg.com/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <script type="importmap">
+      {
+        "imports": {
+          "mermaid": "https://unpkg.com/mermaid@10.8.0/dist/mermaid.esm.min.mjs",
+          "reveal.js": "https://unpkg.com/reveal.js@4.5.0/dist/reveal.esm.js",
+          "reveal.js-mermaid-plugin": "./mermaid-plugin.js",
+          "reveal.js-laser-pointer-plugin": "./laser-pointer-plugin.js",
+          "reveal.js-markdown-plugin": "https://unpkg.com/reveal.js@4.5.0/plugin/markdown/markdown.esm.js",
+          "reveal.js-highlight-plugin": "https://unpkg.com/reveal.js@4.5.0/plugin/highlight/highlight.esm.js",
+          "reveal.js-notes-plugin": "https://unpkg.com/reveal.js@4.5.0/plugin/notes/notes.esm.js",
+          "ruby": "https://unpkg.com/@ruby/3.3-wasm-wasi@2.6.2/dist/browser.script.iife",
+          "@tybys/wasm-util": "https://unpkg.com/@tybys/wasm-util@0.9.0/dist/wasm-util.esm.js",
+          "memfs-browser": "https://unpkg.com/memfs-browser@3.5.10302/dist/memfs.esm.js",
+          "ruby-iife": "https://unpkg.com/@ruby/3.3-wasm-wasi@2.6.2/dist/browser.script.iife.js"
+        }
+      }
+    </script>
+  </head>
+  <style>
+    svg {
+      max-width: none !important;
+      line-height: 150%;
+      -webkit-text-stroke-width: 0.01px;
+    }
+
+    textarea {
+      width: 85%;
+      height: 150px;
+      padding: 20px;
+      border: none;
+      font: inherit;
+    }
+
+    svg#mermaid-2 {
+      height: calc(var(--slide-height) - 200px);
+    }
+
+    img[alt="Gannon"] {
+      width: 40%;
+      float: right;
+      padding-left: 10px;
+    }
+
+    img[alt="QR Code"] {
+      width: 40%;
+    }
+  </style>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <section data-markdown>
+          <textarea data-template>
+            # Running Ruby in the Browser
+
+            #### [Gannon McGibbon](https://gannon.io/)
+
+            Note:
+            For Winnipeg Ruby User Group, July 2024
+            ---
+            ## 👋 Hi, I'm Gannon
+
+            ![Gannon](images/me.jpg)
+
+            - Works at Shopify
+            - Committer on Ruby on Rails
+            - Organizes Winnipeg.rb
+            Note:
+            - Intro
+            ---
+
+            ## I love Ruby!
+
+            ![Ruby](images/ruby-logo.png)
+
+            Note:
+            - I love Ruby
+            - Not tired of it after 9 years
+            - Syntax, APIs, community are wonderful
+            ---
+            ## I wish I could write it everywhere!
+
+            # 🌎
+
+            Note:
+            - The problem is Ruby is server side only
+            - I wish I could write it everywhere
+            - Ruby just wasn't cut out to do that
+            ---
+            ## Ruby in the Browser
+
+            ![Chrome](images/chrome-logo.png)
+
+            Note:
+            - For example, web browsers
+            - They only understand HTML, CSS, JS
+            - The front end doesn't understand Ruby, right?
+            ---
+            ## What about Try Ruby?
+
+            ![TryRuby Website](images/tryruby.png)
+
+            Note:
+            - Many languages can be tested in the browser
+            - Ruby is no different
+            - Try Ruby lets you write Ruby and run it
+            ---
+            ## What about Try Ruby?
+
+            # 🤔
+
+            Note:
+            - This should be impossible
+            - How does it work?
+            ---
+            ## Idiomatically
+
+            ```mermaid
+            flowchart LR
+              Client("👨‍💻")
+              Language("💎")
+              Server
+              Client -- "puts 'hello'" --> Server
+              Server -- "puts 'hello'" --> Language
+              Language -- "hello" --> Server
+              Server -- "{ result: 'hello' }" --> Client
+            ```
+
+            Note:
+            - Idiomatically, this could work
+            - Explain diagram
+            - Some services do work like this
+            ---
+            ## Looking at the Source
+
+            ![TryRuby Website Source](images/tryruby-source.png)
+
+            Note:
+            - Dig into the network inspector
+            - We get something called ruby.wasm
+            - Its a node package
+            ---
+            ## The NPM Package
+
+            ![Ruby WASM Node Package](images/npm-package.png)
+
+            Note:
+            - If we head over to NPM we can see a few things
+            - Its using head Ruby, which is brave
+            - It is the "WebAssembly" port of CRuby
+            ---
+            ## WebAssembly (WASM)
+
+            ![WebAssembly Logo](images/wasm-logo.png)
+
+            Note:
+            - What is WebAssembly?
+            - WebAssembly isn't magic
+            - It is a binary format from 2017
+            - You can run binaries in a browser + elsewhere
+            ---
+            ## How do I use it?
+
+            - Pick a language
+            - Write some code
+            - Compile it to WebAssembly!
+
+            Note:
+            - Use it by picking a language with wasm support
+            - Writing code in that language
+            - Compiling to a .wasm file
+            - For interpreted languages like Ruby, not in that order
+            ---
+            ## How do I use it?
+
+            ```wat
+            ;; add.wat
+            (module
+              (func $add (param $lhs i32) (param $rhs i32) (result i32)
+                local.get $lhs
+                local.get $rhs
+                i32.add)
+              (export "add" (func $add))
+            )
+            ```
+
+            Note:
+            - For the sake of simplicity
+            - Use language closest to the binary
+            - This is WebAssembly text
+            - Explain code
+            ---
+            ## How do I use it?
+
+            ```sh
+            brew install wabt
+            ```
+            ```sh
+            wat2wasm add.wat
+            ```
+            Note:
+            - WebAssembly binary toolkit converts wat to wasm
+            - If we install the wabt package 
+            - We can use wat2wasm to convert it to binary
+            ---
+            ## How do I run it?
+
+            - Fetch the wasm file
+            - "Instantiate" it
+            - Call the exported function
+
+            Note:
+            - Might be wondering how to run it
+            - In browser, you request it
+            - Instantiate it in JavaScript
+            - Call the export in JavaScript
+            ---
+            ## How do I run it?
+
+            ```js
+            const imports = {};
+
+            fetch("add.wasm").then((wasmFile) => {
+              return WebAssembly
+                .instantiateStreaming(wasmFile, imports)
+                .then((result) => result.instance.exports.add(1, 2));
+            });
+            ```
+            Note:
+            - Mention run button
+            - Slides are in a browser
+            - Explain code
+            ---
+            ## The NPM Package
+
+            ![Ruby WASM Node Package](images/npm-package.png)
+
+            Note:
+            - Look again at NPM package
+            - It also mentions WASI
+            - What's that?
+            ---
+            ## WebAssembly System Interface (WASI)
+
+            ![WASI Logo](images/wasi-logo.png)
+
+            Note:
+            - WebAssembly System Interface is an API spec for WASM
+            - Been around since 2019
+            - Many WASM-enabled languages use WASI
+            - Ruby does too
+            ---
+            ## Why?
+
+            ```mermaid
+            flowchart TB
+            subgraph WASM
+              direction TB
+              ruby("Ruby")
+              wasi("WASI")
+            end
+            runtime("Runtime")
+            ruby -- "follows" --> wasi
+            WASM -- "plugs into" --> runtime
+            ```
+
+            Note:
+            - The reason is a consistent interface
+            - Explain diagram
+            - Binary can plug into any WASI runtime
+            ---
+            ## Runtimes
+
+            - Browser
+            - Node.js
+            - CLI tools (eg. wasmtime)
+
+            Note:
+            - WASI exposes defines contract
+            - Anything that implements it can run it
+            - Node, browsers, and CLI tools like wasmtime
+            ---
+            ## Let's run Ruby everywhere!
+
+            # 🌎
+
+            Note:
+            - We know WASI and WASM now
+            - Ruby WASM implements WASI
+            - Let's run Ruby in these runtimes
+            ---
+            ## Browser
+
+            ```html
+            <script 
+              src="https://unpkg.com/@ruby/3.3-wasm-wasi@2.6.2/dist/browser.script.iife.js"
+              type="javascript">
+            </script>
+            <script type="text/ruby">
+              puts "Hello WASM"
+            </script>
+            ```
+
+            Note:
+            - The browser is up first
+            - A script that does it for you 
+            - This is very common
+            - Instantiating WebAssembly in hard
+            ---
+            ## Browser
+
+            ```html
+            <script 
+              src="https://unpkg.com/@ruby/3.3-wasm-wasi@2.6.2/dist/browser.script.iife.js"
+              type="javascript">
+            </script>
+            <script type="text/ruby">
+              puts "Hello WASM"
+            </script>
+            ```
+
+            Note:
+            - WASI WebAssembly need a polyfill to work
+            - Explain code
+            ---
+            ## Browser
+
+            ```js
+            rubyVM.eval(`
+              require "stringio"
+
+              io = StringIO.new("I ❤️ Ruby")
+
+              io.read.reverse.chars
+            `)
+            ```
+
+            Note:
+            - We don't have to use Ruby script tag
+            - When loaded, we have rubyVM global
+            - It exposes eval to interpret Ruby
+            - Explain code
+            ---
+            ## Browser
+
+            ```js
+            rubyVM.evalAsync(`
+              require "js"
+
+              body = JS.global[:document][:body]
+              url = "https://www.ruby-lang.org/en/"
+              response = JS.global.fetch(url).await
+
+              JS.global.alert("#{response.text.await}")
+            `)
+            ```
+
+            Note:
+            - The VM global also ships with a JS API
+            - You can use it for JS interop
+            - You can make network requests with evalAsync
+            - Explain code
+            ---
+            ## Browser
+            ```js
+            rubyVM.eval(`
+              require "yaml"
+              
+              module Converter
+                def self.convert(obj)
+                  obj.to_yaml
+                end
+              end
+            `)
+            const converter = rubyVM.eval(`Converter`)
+            const convert   = function(obj) {
+              const input = rubyVM.eval(JSON.stringify(obj))
+              return converter.call(`convert`, input).toString()
+            }
+            convert({ a: { b: "c" } })
+            ```
+
+            Note:
+            - We can also mix ruby into JS
+            - Eval calls aren't isolated
+            - Explain code
+            ---
+            ## Browser
+
+            ```irb
+            def say_hello(name)
+              "Hello #{name}"
+            end
+            say_hello "WASM"
+            ```
+
+            Note:
+            - Write a little JS, we can make our own Try Ruby
+            - Demo it
+            - Pretty cool, but not useful in prod
+            ---
+            ## Node
+
+            ```sh
+            npm install --save @ruby/3.3-wasm-wasi @ruby/wasm-wasi
+            ```
+            ```node
+            // ruby.js
+
+            import { readFile } from "fs/promises";
+            import { DefaultRubyVM } from "@ruby/wasm-wasi/dist/node";
+
+            const wasmFile = await readFile("./node_modules/@ruby/3.3-wasm-wasi/dist/ruby.wasm");
+            const module = await WebAssembly.compile(wasmFile);
+            const { vm } = await DefaultRubyVM(module);
+
+            vm.eval(`puts "Hello WASM"`);
+            ```
+
+            Note:
+            - Next up is Node
+            - First install the ruby packages
+            - Then we load it into in Node
+            - Explain code
+            ---
+            ## Node
+
+            ```sh
+            node ruby.js
+            ```
+            ```sh
+            Hello WASM
+            ```
+
+            Note:
+            - You need a modern Node for this
+            - Run script from terminal
+            - Prints out what we expect
+            - This is easier because node implements WASI
+            ---
+            ## Node
+
+            ```node
+            vm.evalAsync(`
+              require "js"
+
+              url = "https://webassembly.org/"
+              
+              puts JS.global[:process][:platform]
+              puts JS.global.fetch(url).await.text.await
+            `);
+            ```
+            ```text
+            darwin
+            <!DOCTYPE html>
+            <html lang="en">
+              ...
+            </html>
+            ```
+            Note:
+            - We can also use JS interop
+            - Can access globals
+            - Explain code
+            ---
+            ## CLI
+
+            ```sh
+            brew install wasmtime
+            ```
+
+            Note:
+            - Finally, you can run wasm on your local machine
+            - Strangely, easiest way to run wasm
+            - Install a CLI runtime like wasmtime
+            ---
+            ## CLI
+
+            ```sh
+            curl -LO https://github.com/ruby/ruby.wasm/releases/latest/download/ruby.wasm
+            ```
+            ```sh
+            wasmtime ruby.wasm -e "puts 'Hello WASM'"
+            ```
+            ```sh
+            Hello WASM
+            ```
+
+            Note:
+            - We need a special wasm binary
+            - This one doesn't have JS bundled
+            - Explain commands
+            ---
+            ## CLI
+
+            ```sh
+            wasmtime ruby.wasm hello.rb
+            ```
+            ```sh
+            ruby.wasm: No such file or directory -- ./hello.rb (LoadError)
+            ```
+            ```sh
+            wasmtime run --dir ./::/ ruby.wasm hello.rb
+            ```
+            ```sh
+            Hello WASM
+            ```
+
+            Note:
+            - The -e switch isn't practical
+            - Worse, it can't find files you pass
+            - Because wasm doesn't have direct access to disk
+            - We could map it like this, but this is complicated
+            ---
+            ## CLI
+
+            ![Ruvy](images/ruvy.png)
+
+            Note:
+            - Instead, we can use a different project
+            - Ruvy by Shopify converts a script to wasm
+            - Nice and easy
+            ---
+            ## CLI
+
+            ```sh
+            git clone https://github.com/Shopify/ruvy.git
+            cd ruvy
+            make
+            cargo run --package=cli ./hello.rb
+            ```
+
+            Note:
+            - To set up, clone
+            - Run make
+            - And then cargo to create index.wasm
+            ---
+            ## CLI
+
+            ```sh
+            wasmtime index.wasm
+            ```
+            ```sh
+            Hello WASM
+            ```
+
+            Note:
+            - Plug that into wasmtime
+            - Much better
+            - With effort, you can run this in browser
+            - Or node, or any other WASI runtime
+            ---
+            ## What about gems?
+
+            # 💎💎💎
+
+            Note:
+            - So great, we can run Ruby everywhere
+            - Ruby isn't useful without gems
+            - Can we bundle gems with our binary?
+            ---
+            ## Before you build
+
+            - Minimal
+            - Full
+            - JS Interoperability
+
+            Note:
+            - Touched on this, supports multiple variations
+            - Minimal binary has no standard gems
+            - Full binary includes standard library
+            - Binary may also have JS interop
+            - Consider these options when building
+            ---
+            ## Building our own Ruby
+
+            ```gemfile
+            # Gemfile
+            source "https://rubygems.org"
+
+            gem "jwt"
+            # gem "js" # if we want JS interop
+
+            group :development do
+              gem "ruby_wasm"
+            end
+            ```
+            ```sh
+            bundle install
+            ```
+            ```sh
+            bundle exec rbwasm build -o ruby_with_jwt.wasm
+            ```
+
+            Note:
+            - Building your own binary isn't hard
+            - You need a Gemfile with ruby_wasm gem
+            - Explain code
+            ---
+            ## Building our own Ruby
+
+            ```sh
+            INFO: Using Gemfile: [#<Pathname:/project/Gemfile>]
+            ...
+            INFO: Packaging gem: base64-0.2.0
+            INFO: Packaging gem: jwt-2.8.1
+            INFO: Packaging setup.rb: bundle/setup.rb
+            INFO: Size: 51.28 MB
+            ```
+            ```rb
+            # script.rb
+            $LOAD_PATH << "/"
+
+            require "bundle/setup"
+            require "jwt"
+
+            payload = { data: "test" }
+            token = JWT.encode payload, nil, "none"
+
+            puts token
+            ```
+
+            Note:
+            - The build downloads and prints a lot
+            - At the end, see the wasm bundle
+            - Includes JWT gem, deps, and setup script
+            - Explain code
+            ---
+            ## Building our own Ruby
+
+            ```sh
+            wasmtime run --dir ./::/ ruby_with_jwt.wasm script.rb
+            ```
+            ```sh
+            Ignoring debug-1.9.1 because its extensions are not built. Try: gem pristine debug --version 1.9.1
+            Ignoring racc-1.7.3 because its extensions are not built. Try: gem pristine racc --version 1.7.3
+            Ignoring rbs-3.4.0 because its extensions are not built. Try: gem pristine rbs --version 3.4.0
+            eyJhbGciOiJub25lIn0.eyJkYXRhIjoidGVzdCJ9
+            ```
+
+            Note:
+            - Run it through wasmtime
+            - Will output a web token
+            - Along with a few warnings
+            ---
+            ## Limitations
+
+            # 🚧
+
+            Note:
+            - A good time to talk about limitations
+            - WASM is powerful, but new
+            - And there are things it can't do yet
+            ---
+            ## Limitations
+
+            ![Limitations](images/limitations.png)
+            --
+
+            Note:
+            - From the Ruby.wasm readme
+            - It can't do threading
+            - It can't do network IO
+            - We saw it can't use some gems
+            - JS interop, to fill the gaps
+            ---
+            ## The Future
+
+            ![Features](images/features.png)
+
+            Note:
+            - Limitations vary from language to language
+            - Explain table
+            - Note threading API on the way
+            ---
+            ## The Future
+
+            ![Languages](images/languages.png)
+
+            Note:
+            - Explain list supported languages
+            - Ruby is missing, so there's definitely more
+            - Rust is probably the most feature-complete
+            ---
+            ## Why bother?
+
+            - Speed
+            - Security
+            - Portability
+
+            Note:
+            - We know how to build WASM binaries
+            - Why bother using it?
+            - JS works fine, but there's three reasons for wasm
+            ---
+            ## Speed
+
+            - Difficult to prove
+            - It can be faster, but isn't always
+            - Let's test this out!
+
+            Note:
+            - Can be difficult to prove
+            - Faster for certain operations
+            - Let's benchmark!
+            ---
+            ## Speed
+
+            ```js
+            const ips = (name, fn) => { 
+              let times = 0
+              const until = new Date().getSeconds() + 3;
+              do { fn(); times++ } while (new Date().getSeconds() < until)
+              return `${name}: ${times} in 3 seconds`
+            };
+      
+            fetch("add.wasm").then((wasmFile) => {
+              return WebAssembly
+                .instantiateStreaming(wasmFile, {})
+                .then((result) => {
+                  const { add } = result.instance.exports
+                  return ips("add wasm", () => add(1, 2)) +
+                    ", " + ips("add js", () => 1 + 2)
+                });
+            });
+            ```
+
+            Note:
+            - This is an iteration style benchmark
+            - Records run count of a function runs in 3 seconds
+            - Explain
+            - Poll audience
+            - Run it
+            ---
+            ## Speed
+
+            # 🔎
+
+            Note:
+            - This is a micro-benchmark
+            - We're too close to basics
+            - We're not considering interop cost
+            - Let's zoom out and benchmark bigger
+            ---
+            ## Speed
+
+            ![WasmBoy Benchmark](images/wasmboy-benchmark.png)
+            https://wasmboy.app/benchmark/
+
+            Note:
+            - WasmBoy is a GameBoy emulator written in WASM
+            - WasmBoy has benchmark that compares WASM to JS impls
+            - WASM kept a higher framerate overall
+            ---
+            ## Security
+
+            - Executes in an isolated sandbox
+            - By default, no filesystem
+            - By default, no access to the DOM
+            - By default, no access the the network
+
+            Note:
+            - Easier to prove
+            - Execution isolated from the host machine
+            - There's no fs by default
+            - There's no dom access by default
+            - No network by default
+            ---
+            ## Security
+
+            # 🔒
+
+            Note:
+            - This is by design
+            - Wouldn't be allowed in browsers otherwise
+            - It can only do everything JS can
+            ---
+            ## Security
+            ```sh
+            wasmtime ruby.wasm hello.rb
+            ```
+            ```sh
+            ruby.wasm: No such file or directory -- ./hello.rb (LoadError)
+            ```
+            ```sh
+            wasmtime ruby_with_js.wasm
+            ```
+            ```sh
+            Error: failed to run main module `ruby_with_js.wasm`
+
+            Caused by:
+                0: failed to instantiate "ruby_with_js.wasm"
+                1: unknown import: `rb-js-abi-host::rb_wasm_throw_prohibit_rewind_exception` has not been defined
+            ```
+
+            Note:
+            - Pretty useless by default
+            - Nice that we can bridge the gap with JS where possible
+            ---
+            ## Portability
+
+            - Run _any_ language in the browser
+            - Run _any_ language in Node app
+            - Run _any_ language locally via a binary
+
+            Note:
+            - Easiest to prove
+            - Run Ruby in your browser, node app, or local machine
+            - You don't need Ruby installed, its a binary
+            - Write once, run everywhere
+            ---
+            ## Demo
+
+            - [IRB](https://irb-wasm.vercel.app/)
+            - [Mastodon (Chrome only)](https://mastodon-in-browser.vercel.app/boot.html)
+            - [Google Earth](https://earth.google.com)
+            - [Unity Web](https://petpumpkin.itch.io/handshakes)
+            - [More!](https://madewithwebassembly.com/)
+
+            ---
+            ## Summary
+
+            - You can run Ruby _anywhere_ with WASM
+            - You can build your own binaries
+            - You might be using WASM more in the future
+
+            Note:
+            - You can run Ruby and many other languages anywhere
+            - You can and should build purpose-built wasm binaries
+            - There's a lot of potential in WASM, you might use it in the future
+            ---
+            ![QR Code](images/qr.png)
+            ---
+            ## References
+            - https://try.ruby-lang.org/
+            - https://github.com/ruby/ruby.wasm
+            - https://webassembly.org/
+            - https://wasi.dev/
+            - https://wasmtime.dev/
+            - https://developer.mozilla.org/en-US/docs/WebAssembly/Understanding_the_text_format
+            - https://shopify.engineering/introducing-ruvy
+            - https://github.com/Shopify/ruvy
+            - https://speakerdeck.com/kateinoigakukun/rubygems-on-ruby-dot-wasm
+            ---
+          </textarea>
+        </section>
+      </div>
+    </div>
+    <script type="module">
+      import Reveal from 'reveal.js'
+      import Markdown from 'reveal.js-markdown-plugin'
+      import Mermaid from 'reveal.js-mermaid-plugin'
+      import LaserPointer from 'reveal.js-laser-pointer-plugin'
+      import Highlight from 'reveal.js-highlight-plugin'
+      import Notes from 'reveal.js-notes-plugin'
+      import 'ruby-iife'
+
+      const deck = new Reveal({
+        plugins: [
+          Markdown,
+          Mermaid,
+          Highlight,
+          LaserPointer,
+          Notes,
+        ]
+      })
+      deck.initialize({
+        transition: 'none',
+        center: false,
+        controls: false,
+        hash: true,
+        controlsBackArrows: 'hidden',
+        mermaid: {
+          theme: 'dark',
+          themeVariables: {
+            signalTextColor: '',
+          },
+        },
+      })
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const addRunButtonTo = function(element, evalMethod) {
+          const button = document.createElement("button")
+          const output = document.createElement("div")
+          
+          element.parentElement.classList.add("hljs")
+          output.style.padding = "0px 0px 22px 22px"
+          output.style.whiteSpace = "pre"
+          button.style.margin = "0px 0px 0px 22px"
+          button.style.padding = "3px"
+          button.style.background = "green"
+          button.style.color = "white"
+          button.style.border = "none"
+          button.textContent = "Run"
+          button.addEventListener("click", () => {
+            const hide = element.tagName == "CODE"
+            const value = element.tagName == "CODE" ? element.textContent : element.value
+            Promise.resolve(evalMethod(value)).then((result) => {
+              output.textContent = result
+              if (hide) { element.parentElement.removeChild(button) }
+            });
+          });
+          
+          element.parentElement.appendChild(button)
+          element.parentElement.appendChild(output)
+        }
+        const languages = {
+          js: { eval: eval, selector: ".js" },
+          ruby: { eval: (code) => rubyVM.eval(code), selector: ".ruby" },
+        }
+
+        document.querySelectorAll(".irb").forEach((element) => {
+          element.outerHTML = `<textarea class="ruby hljs">${element.innerText}</textarea>`
+        })
+        Object.values(languages).forEach((language) => {
+          document.querySelectorAll(language.selector).forEach((element) => {
+            addRunButtonTo(element, language.eval)
+          })
+        })
+      })
+    </script>
+  </body>
+</html> 
