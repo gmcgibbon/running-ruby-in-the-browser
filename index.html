@@ -718,20 +718,20 @@
             ```js
             const ips = (name, fn) => { 
               let times = 0
-              const until = new Date().getSeconds() + 3;
-              do { fn(); times++ } while (new Date().getSeconds() < until)
+              const until = (new Date().getTime() / 1000) + 3;
+              do {
+                fn(); times++
+              } while (new Date().getTime() / 1000 < until)
               return `${name}: ${times} in 3 seconds`
-            };
-      
+            }
             fetch("add.wasm").then((wasmFile) => {
               return WebAssembly
-                .instantiateStreaming(wasmFile, {})
-                .then((result) => {
+                .instantiateStreaming(wasmFile, {}).then((result) => {
                   const { add } = result.instance.exports
                   return ips("add wasm", () => add(1, 2)) +
                     ", " + ips("add js", () => 1 + 2)
-                });
-            });
+                })
+            })
             ```
 
             Note:
@@ -904,9 +904,16 @@
           button.addEventListener("click", () => {
             const hide = element.tagName == "CODE"
             const value = element.tagName == "CODE" ? element.textContent : element.value
+            button.enabled = false
+            button.textContent = "..."
             Promise.resolve(evalMethod(value)).then((result) => {
               output.textContent = result
-              if (hide) { element.parentElement.removeChild(button) }
+              if (hide) {
+                element.parentElement.removeChild(button)
+              } else {
+                button.enabled = true
+                button.textContent = "Run"
+              }
             });
           });
           
